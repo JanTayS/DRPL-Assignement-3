@@ -1,60 +1,126 @@
 import numpy as np
 import random as rd
 
-# rd.seed(1)
+class Game:
+    def __init__(self):
+        # Game setup
+        self.players = ('X', 'O')
+        self.turn_player = 'X'
+        self.actions = [(x, y) for x in range(3) for y in range(3)]
+        self.winner = None
+        self.game_state = [[' ', ' ', ' '], 
+                           [' ', ' ', ' '],
+                           [' ', ' ', ' ']]
 
-# initialize players
-X = 1
-O = 2
-players = (O,X)
+    '''
+        Updates the game-state by taking an action for a player.
+        Removes the action from the list of possible actions
+        Action is a (x, y) tuple
+    '''
+    def take_action(self, action):
+        # Update game
+        x, y = action
+        self.game_state[y][x] = self.turn_player
+        self.actions.remove(action)
+        self.pass_turn()
 
-# initialize all possible actions
-dimensions = 3
-actions = []
-for x_dimension in range(dimensions):
-    for y_dimension in range(dimensions):
-        actions.append((x_dimension,y_dimension))
+        # Check if game is over
+        self.determine_winner()
 
-# initialize starting state
-state = np.zeros((3,3))
-state[1,1] = X
-actions.remove((1,1))
+    '''
+        Updates the state of active player
+    '''
+    def pass_turn(self):
+        if self.turn_player == 'X':
+            self.turn_player = 'O'
+        else:
+            self.turn_player = 'X'
 
-# TIC TAC TOE
-not_finished = True
-winner = None
-while not_finished:
-    for player in players:
-        # placement which needs to be optimized
-        if player == O:
-            placement = rd.choice(actions)
-        # random computer actions
-        if player == X:
-            placement = rd.choice(actions)
-        state[placement[0],placement[1]] = player
-        actions.remove(placement)
+    '''
+        After each action this function checks if a player has won the game
+    '''
+    def determine_winner(self):
+        for player in self.players:
+            # Check horizontal
+            for row in self.game_state:
+                for i in range(3):
+                    if row[i] != player:
+                        break
+                    if i == 2:
+                        self.winner = player
+                        return
+
+            # Check vertical
+            for col in range(3):
+                for row in range(3):
+                    if self.game_state[row][col] != player:
+                        break
+                    if row == 2:
+                        self.winner = player
+                        return
+
+            # Check top-left to bottom-right diagonal
+            for i in range(3):
+                if self.game_state[i][i] != player:
+                    break
+                if i == 2:
+                    self.winner = player
+                    return
+
+            # Check bottom-left to top-right diagonal
+            for i in range(3):
+                if self.game_state[2 - i][i] != player:
+                    break
+                if i == 2:
+                    self.winner = player
+                    return
+        
+        # Check for draw
+        for row in self.game_state:
+            for col in row:
+                if col == ' ':
+                    return
+        self.winner = "Draw"
+
+
+
+    '''
+        Prints the current game state
+    '''
+    def print_game(self):
+        print()
+        for i in range(3):
+            row = self.game_state[i]
+            print(" {} | {} | {} ".format(row[0], row[1], row[2]))
+            if i != 2:
+                print("------------")
+        print()
+
+def select_action_random(game):
+    return rd.choice(game.actions)
+
+'''
+    Initializes the game and simulates it
+'''
+def simulate_game():
+    game = Game() # The "X" player always starts the game
+
+    # Initial action is always a 'X' in the center
+    game.take_action((1, 1))
+    game.print_game()
+
+    while game.winner == None:
+        
+        if game.turn_player == 'X':
+            action = select_action_random(game)
+        if game.turn_player == 'O':
+            # Should create a smart function for this one
+            action = select_action_random(game)
+
+        game.take_action(action)
+        game.print_game()
     
-    print(state)
-    print()
+    print("Winner: " + game.winner)
 
-    # Checks for terminal state
-    for x_dimension in range(dimensions):
-        if state[x_dimension,0] != 0 and state[x_dimension,0] == state[x_dimension,1] and state[x_dimension,0] == state[x_dimension,2]:
-            winner = state[x_dimension,0]
-            not_finished = False
-    for y_dimension in range(dimensions):
-        if state[0,y_dimension] != 0 and state[0,y_dimension] == state[1,y_dimension] and state[0,y_dimension] == state[2,y_dimension]:
-            winner = state[0,y_dimension]
-            not_finished = False
-    if state[0,0] != 0 and state[0,0] == state[1,1] and state[0,0] == state[2,2]:
-        winner = state[0,0]
-        not_finished = False
-    if state[0,2] != 0 and state[0,2] == state[1,1] and state[0,2] == state[2,0]:
-        winner = state[0,2]
-        not_finished = False
-    if actions == [] and winner != True:
-        winner = None
-        not_finished = False
-
-print(state)
-print(winner)
+if __name__ == "__main__":
+    simulate_game()
