@@ -2,6 +2,7 @@ import numpy as np
 import random as rd
 from math import sqrt
 from math import log
+import copy
 
 class MonteCarloTree:
 
@@ -11,6 +12,15 @@ class MonteCarloTree:
         self.w = {} # win count for each node, equivalent to Q in this case
         self.exploration_parameter = exploration_parameter
         self.N = 0 # represents the number of times all reachable nodes have been considered (sum of the visit count of all reachable nodes)
+
+    def choose(self, node):
+        pass
+
+    def playout(self, node):
+        path = self.selection(node)
+        leaf = path[-1]
+        leaf.print_game()
+        self.expansion(leaf)
 
     # a leaf is any node that has a potential child from which no simulation (playout) has yet been initiated
     # or a node is a leaf if the state is a terminal state
@@ -25,7 +35,7 @@ class MonteCarloTree:
         return False
 
     # The root is the current game state
-    def best_uct(self, root):
+    def uct(self, root):
         max_uct = 0
         for child in self.children[root]:
             uct = child[1]/child[0] + self.exploration_parameter*sqrt(log(self.N)/child[0]) # child[1] = w_i and child[0] = n_i
@@ -33,14 +43,17 @@ class MonteCarloTree:
                 node = child
                 max_uct = uct
         return node
+
+    # Returns all moves which have not been tried yet for a given state
+    def find_undiscovered(self, node):
+        undiscovered = []
+        children = self.children[node]
+        for child in children:
+            if child not in self.children.keys():
+                undiscovered.append(child)
+        return undiscovered
+
     
-    def selection(self, root):
-        if self.isLeafNode(root):
-            node = self.best_uct(root)
-        else: 
-            node = rd.choice(self.children)# random child
-        return node
-        
     def selection(self, root):
         path = [root]
 
@@ -51,10 +64,25 @@ class MonteCarloTree:
             if self.isLeafNode(node):
                 return path
 
+            # If not a leaf node prioritize undiscovered children
+            undiscovered = self.find_undiscovered(node)
+            if undiscovered:
+                node = rd.choice(undiscovered)
+                path.append(node)
+                return path
+
+            # uct is only applied if all children are discovered
             node = self.uct(node)
+            path.append(node)
     
     def expansion(self, node):
-        self.children[node] = []
+        # Already expanded once
+        if node in self.children:
+            return
+        self.children[node] = node.get_next_states()
+        for child in self.children[node]:
+            child.print_game()
+
 
     def simulation(self):
         pass
@@ -101,8 +129,9 @@ class GameState:
     '''
     def take_action(self, action):
         x, y = action
-        self.game_state[y][x] = self.turn_player
-        return GameState(game_state=self.game_state)
+        new_state = copy.deepcopy(self.game_state)
+        new_state[y][x] = self.turn_player
+        return GameState(game_state=new_state)
 
     def get_next_states(self):
         next_states = []
@@ -111,6 +140,7 @@ class GameState:
 
         for action in self.actions:
             next_states.append(self.take_action(action))
+
 
         return next_states
 
@@ -185,14 +215,9 @@ def select_action_random(game):
 '''
 def simulate_game():
     # tree = MonteCarloTree()
-    game = GameState(game_state= [['O', 'X', 'O'], ['X', 'O', 'X'], ['X', 'O', ' ']]) # The "X" player always starts the game
-    print(game.winner)
-
-    # game.print_game()
-    # print(game.winner)
-    # print(game.turn_player)
-    print(game.get_actions(game.game_state))
-    print(game.take_action((2, 2)).print_game())
+    game = GameState(game_state= [[' ', ' ', ' '], [' ', ' ', ' '], [' ', ' ', ' ']])
+    mct = MonteCarloTree()
+    mct.playout(game)
 
     # # Initial action is always a 'X' in the center
     # game.take_action((1, 1))
