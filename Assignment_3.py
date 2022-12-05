@@ -61,45 +61,58 @@ class MonteCarloTree:
 
     def backpropogation(self):
         pass
-        
 
-# A node represents a state of the game
-# class Node:
-
-#     def __init__(self, state, reward, children):
-#         self.state = state
-#         self.reward = reward
-#         self.children = children
-
-#     # All possi 
-#     def all_children(self)
-
-
-class Game:
-    def __init__(self):
+class GameState:
+    def __init__(self, game_state=[[' ', ' ', ' '], [' ', ' ', ' '], [' ', ' ', ' ']]):
         # Game setup
         self.players = ('X', 'O')
-        self.turn_player = 'X'
-        self.actions = [(x, y) for x in range(3) for y in range(3)]
-        self.winner = None
-        self.game_state = [[' ', ' ', ' '], 
-                           [' ', ' ', ' '],
-                           [' ', ' ', ' ']]
+        self.game_state = game_state
+
+        self.turn_player = self.get_turn_player(game_state)
+        self.actions = self.get_actions(game_state)
+
+        self.winner = self.determine_winner(self.game_state)
+
+    def get_turn_player(self, game_state):
+        actions_taken = 0
+
+        for row in game_state:
+            for state in row:
+                if state != ' ':
+                    actions_taken += 1
+
+        if actions_taken % 2 == 0:
+            return 'X'
+        return 'O'
+
+    def get_actions(self, game_state):
+        actions = []
+
+        for row in range(3):
+            for col in range(3):
+                if game_state[row][col] == ' ':
+                    actions.append((row, col))
+        
+        return actions
 
     '''
         Updates the game-state by taking an action for a player.
-        Removes the action from the list of possible actions
         Action is a (x, y) tuple
     '''
     def take_action(self, action):
-        # Update game
         x, y = action
         self.game_state[y][x] = self.turn_player
-        self.actions.remove(action)
-        self.pass_turn()
+        return GameState(game_state=self.game_state)
 
-        # Check if game is over
-        self.determine_winner()
+    def get_next_states(self):
+        next_states = []
+        if self.winner != None:
+            return next_states
+
+        for action in self.actions:
+            next_states.append(self.take_action(action))
+
+        return next_states
 
     '''
         Updates the state of active player
@@ -110,56 +123,47 @@ class Game:
         else:
             self.turn_player = 'X'
 
-    def get_actions(self):
-        actions = []
-        return actions
-
-
     '''
         After each action this function checks if a player has won the game
     '''
-    def determine_winner(self):
+    def determine_winner(self, game_state):
         for player in self.players:
             # Check horizontal
-            for row in self.game_state:
+            for row in game_state:
                 for i in range(3):
                     if row[i] != player:
                         break
                     if i == 2:
-                        self.winner = player
-                        return
+                        return player
 
             # Check vertical
             for col in range(3):
                 for row in range(3):
-                    if self.game_state[row][col] != player:
+                    if game_state[row][col] != player:
                         break
                     if row == 2:
-                        self.winner = player
-                        return
+                        return player
 
             # Check top-left to bottom-right diagonal
             for i in range(3):
-                if self.game_state[i][i] != player:
+                if game_state[i][i] != player:
                     break
                 if i == 2:
-                    self.winner = player
-                    return
+                    return player
 
             # Check bottom-left to top-right diagonal
             for i in range(3):
-                if self.game_state[2 - i][i] != player:
+                if game_state[2 - i][i] != player:
                     break
                 if i == 2:
-                    self.winner = player
-                    return
+                    return player
         
         # Check for draw
-        for row in self.game_state:
+        for row in game_state:
             for col in row:
                 if col == ' ':
-                    return
-        self.winner = "Draw"
+                    return None
+        return "Draw"
 
     '''
         Prints the current game state
@@ -180,25 +184,32 @@ def select_action_random(game):
     Initializes the game and simulates it
 '''
 def simulate_game():
-    tree = MonteCarloTree()
-    game = Game() # The "X" player always starts the game
+    # tree = MonteCarloTree()
+    game = GameState(game_state= [['O', 'X', 'O'], ['X', 'O', 'X'], ['X', 'O', ' ']]) # The "X" player always starts the game
+    print(game.winner)
 
-    # Initial action is always a 'X' in the center
-    game.take_action((1, 1))
-    game.print_game()
+    # game.print_game()
+    # print(game.winner)
+    # print(game.turn_player)
+    print(game.get_actions(game.game_state))
+    print(game.take_action((2, 2)).print_game())
 
-    while game.winner == None:
+    # # Initial action is always a 'X' in the center
+    # game.take_action((1, 1))
+    # game.print_game()
+
+    # while game.winner == None:
         
-        if game.turn_player == 'X':
-            action = select_action_random(game)
-        if game.turn_player == 'O':
-            # Should create a smart function for this one
-            action = select_action_random(game)
+    #     if game.turn_player == 'X':
+    #         action = select_action_random(game)
+    #     if game.turn_player == 'O':
+    #         # Should create a smart function for this one
+    #         action = select_action_random(game)
 
-        game.take_action(action)
-        game.print_game()
+    #     game.take_action(action)
+    #     game.print_game()
     
-    print("Winner: " + game.winner)
+    # print("Winner: " + game.winner)
 
 if __name__ == "__main__":
     simulate_game()
