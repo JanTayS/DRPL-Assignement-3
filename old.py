@@ -6,21 +6,31 @@ import copy
 
 class MonteCarloTree:
 
-    def __init__(self, exploration_parameter=1):
+    def __init__(self, c=1):
         self.children = {} # key -> [Node1, Node2]
         self.n = {} # visit count for each node
         self.w = {} # win count for each node, equivalent to Q in this case
-        self.exploration_parameter = exploration_parameter
+        self.c = c # exploration  parameter
         self.N = 0 # represents the number of times all reachable nodes have been considered (sum of the visit count of all reachable nodes)
 
     def choose(self, node):
         pass
 
     def playout(self, node):
-        path = self.selection(node)
-        leaf = path[-1]
-        leaf.print_game()
-        self.expansion(leaf)
+        path = self.selection(node) # Find leaf node L
+        L = path[-1]
+        self.expansion(L) # If L doesn't end the game expand the tree from L
+        
+        # Select random action C from L's children, then simulate a full game for this action 
+        C = L
+        # No actions (children) means L is terminal, then pass L to simulate instead of a child
+        if self.children[L]:
+            C = rd.choice(self.children[L]) 
+        path.append(C)
+        print(path)
+        reward = self.simulation(C)
+        # self.backpropagation(path, reward)
+
 
     # a leaf is any node that has a potential child from which no simulation (playout) has yet been initiated
     # or a node is a leaf if the state is a terminal state
@@ -38,7 +48,7 @@ class MonteCarloTree:
     def uct(self, root):
         max_uct = 0
         for child in self.children[root]:
-            uct = child[1]/child[0] + self.exploration_parameter*sqrt(log(self.N)/child[0]) # child[1] = w_i and child[0] = n_i
+            uct = self.w[child] / self.n[child] + self.c * sqrt(log(self.N)/self.n[child])
             if uct >= max_uct:
                 node = child
                 max_uct = uct
@@ -75,23 +85,42 @@ class MonteCarloTree:
             node = self.uct(node)
             path.append(node)
     
+    # Expands a node in the tree with all actions that can be taken from that node
     def expansion(self, node):
         # Already expanded once
         if node in self.children:
             return
         self.children[node] = node.get_next_states()
-        for child in self.children[node]:
-            child.print_game()
 
 
-    def simulation(self):
-        pass
+    def simulation(self, state):
+        state.print_game()
+        while not state.winner:
+            actions = state.get_actions(state.game_state)
+            print(actions)
+            nxt_states = state.get_next_states()
+            state = rd.choice(nxt_states)
+            state.print_game()
 
-    def backpropogation(self):
-        pass
+        # Return 1 if O wins
+        if state.winner == 'O':
+            return 1
+        
+        # Draw and loss return 0
+        return 0
+
+    def backpropagation(self, path, reward):
+        for node in path.reverse():
+            if node not in self.q:
+                self.q[node] = 0
+            if node not in self.n:
+                self.n[node] = 0
+            
+            self.q[node] += 1
+            self.n[node] += 1
 
 class GameState:
-    def __init__(self, game_state=[[' ', ' ', ' '], [' ', ' ', ' '], [' ', ' ', ' ']]):
+    def __init__(self, game_state=((' ', ' ', ' '), (' ', ' ', ' '), (' ', ' ', ' '))):
         # Game setup
         self.players = ('X', 'O')
         self.game_state = game_state
@@ -124,13 +153,15 @@ class GameState:
         return actions
 
     '''
-        Updates the game-state by taking an action for a player.
+        Creates a new game_state from an action for a player.
         Action is a (x, y) tuple
     '''
     def take_action(self, action):
         x, y = action
-        new_state = copy.deepcopy(self.game_state)
+        # new_state = copy.deepcopy(self.game_state)
+        new_state = np.asarray(self.game_state)
         new_state[y][x] = self.turn_player
+        new_state = tuple(map(tuple, new_state))
         return GameState(game_state=new_state)
 
     def get_next_states(self):
@@ -143,15 +174,6 @@ class GameState:
 
 
         return next_states
-
-    '''
-        Updates the state of active player
-    '''
-    def pass_turn(self):
-        if self.turn_player == 'X':
-            self.turn_player = 'O'
-        else:
-            self.turn_player = 'X'
 
     '''
         After each action this function checks if a player has won the game
@@ -207,6 +229,15 @@ class GameState:
                 print("------------")
         print()
 
+    # Required functions to use class as key 
+    def __eq__(self, other):
+        return self.game_state == other.game_state
+
+    def __hash__(self):
+        return hash(self.game_state)
+
+
+
 def select_action_random(game):
     return rd.choice(game.actions)
 
@@ -214,10 +245,19 @@ def select_action_random(game):
     Initializes the game and simulates it
 '''
 def simulate_game():
-    # tree = MonteCarloTree()
-    game = GameState(game_state= [[' ', ' ', ' '], [' ', ' ', ' '], [' ', ' ', ' ']])
+    game = GameState()
     mct = MonteCarloTree()
     mct.playout(game)
+
+
+
+
+    # a = (('a', 'b'), ('a', 'c'))
+    # # b = (('a', 'b'), ('a', 'c'))
+
+    # print(np.asarray(a))
+    # print(tuple(map(tuple, arr)))
+
 
     # # Initial action is always a 'X' in the center
     # game.take_action((1, 1))
